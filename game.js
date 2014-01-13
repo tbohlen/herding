@@ -1,5 +1,6 @@
 var LOGIC_LOOP_TIME = 8;
 var DRAW_LOOP_TIME = 1000/30;
+var MOVE_BUFFER = 0.1;
 
 /*
  * Constructor: Game
@@ -16,7 +17,7 @@ function Game() {
     this.offsetX = offset.left;
     this.offsetY = offset.top;
 
-    //this.level = new Level();
+    this.level = new Level();
 }
 
 /*
@@ -84,21 +85,8 @@ function drawLoop(game) {
     drawUpdate(game);
     // clean the screen
     clearScreen(game, "rgb(220, 220, 220)");
-
-    // draw all drawElements or kill them if they are dead
-    //for (var key in game.drawElements) {
-        //if (game.drawElements.hasOwnProperty(key)) {
-            //var element = game.drawElements[key];
-            //if (element.isDead()) {
-                //element.kill();
-                //delete game.drawElements[element.drawIndex];
-                //delete game.logicElements[element.logicIndex];
-            //}
-            //else {
-                //element.draw(game);
-            //}
-        //}
-    //}
+    // have the level draw itself
+    game.level.draw(game);
 }
 
 /*
@@ -109,6 +97,8 @@ function logicLoop(game) {
     var i;
     // update all important variables
     logicUpdate(game);
+
+    game.level.logic();
 
     // run all logicElements
     //for (var key in game.logicElements) {
@@ -146,20 +136,46 @@ $(document).ready(function() {
             game.mouseY = ev.pageY - game.offsetY;
         });
 
-        $(document).on('keypress', function(ev) {
+        $(document).on('keydown', function(ev) {
             // pressing 1 allows for level skipping
-            switch (ev.keycode) {
+            switch (ev.keyCode) {
                 case 37:
                     // left
+                    game.level.player.left = 1;
                     break;
                 case 38:
                     // up
+                    game.level.player.up = 1;
                     break;
                 case 39:
                     // right
+                    game.level.player.right = 1;
                     break;
                 case 40:
                     // down
+                    game.level.player.down = 1;
+                    break;
+            }
+        });
+
+        $(document).on('keyup', function(ev) {
+            // pressing 1 allows for level skipping
+            switch (ev.keyCode) {
+                case 37:
+                    // left
+                    game.level.player.left = 0;
+                    break;
+                case 38:
+                    // up
+                    game.level.player.up = 0;
+                    break;
+                case 39:
+                    // right
+                    game.level.player.right = 0;
+                    break;
+                case 40:
+                    // down
+                    game.level.player.down = 0;
                     break;
             }
         });
