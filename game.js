@@ -1,4 +1,7 @@
-var LOGIC_LOOP_TIME = 8;
+// animals think slowly. Only make decisions 10 times a second but apply them 30
+// times a second
+var DECISION_LOOP_TIME = 1000/30;
+var MOVE_LOOP_TIME = 1000/30;
 var DRAW_LOOP_TIME = 1000/30;
 var MOVE_BUFFER = 0.1;
 
@@ -44,22 +47,6 @@ Game.prototype.resize = function() {
 // Run
 
 /*
- * Function: drawUpdate
- * Updates all variables necessary to draw.
- */
-function drawUpdate(game) {
-    game.drawFrame++;
-}
-
-/*
- * Function: logicUpdate
- * Updates all the necessary variables for the logic run.
- */
-function logicUpdate(game) {
-    game.logicFrame++;
-}
-
-/*
  * Function: clearScreen
  * Clears the drawing context entirely.
  *
@@ -80,9 +67,6 @@ var clearScreen = function(game, color) {
  * elsewhere.
  */
 function drawLoop(game) {
-    var i;
-    // update all important variables
-    drawUpdate(game);
     // clean the screen
     clearScreen(game, "rgb(220, 220, 220)");
     // have the level draw itself
@@ -90,28 +74,25 @@ function drawLoop(game) {
 }
 
 /*
- * Function: logicLoop
+ * Function: decisionLoop
  * Executes the logic of the game, one logicElement at a time.
  */
-function logicLoop(game) {
-    var i;
-    // update all important variables
-    logicUpdate(game);
-
+function decisionLoop(game) {
     game.level.logic();
+}
 
-    // run all logicElements
-    //for (var key in game.logicElements) {
-        //if (game.logicElements.hasOwnProperty(key)) {
-            //game.logicElements[key].doLogic(game);
-        //}
-    //}
+/*
+ * Function: moveLoop
+ * Moves the sprites.
+ */
+function moveLoop(game) {
+    game.level.move();
 }
 
 function loadGame(callback) {
     console.log("Loading...");
     window.game = new Game();
-    game.resize();
+    window.game.resize();
     callback(window.game);
 }
 
@@ -124,7 +105,8 @@ $(document).ready(function() {
 
         // start the loops
         game.drawLoopID = window.setInterval(drawLoop, DRAW_LOOP_TIME, game);
-        game.logicLoopID = window.setInterval(logicLoop, LOGIC_LOOP_TIME, game); // 200 times per second
+        game.moveLoopID = window.setInterval(moveLoop, MOVE_LOOP_TIME, game); // 200 times per second
+        game.decisionLoopID = window.setInterval(decisionLoop, DECISION_LOOP_TIME, game); // 200 times per second
 
         ///////////////////////////////////////////////////////////////////////////
         ///////////////////////////// Event Handlers //////////////////////////////
@@ -132,8 +114,7 @@ $(document).ready(function() {
 
         $(document).on('mousemove', function(ev) {
             // when the mouse is moved, update the position
-            game.mouseX = ev.pageX - game.offsetX;
-            game.mouseY = ev.pageY - game.offsetY;
+            game.level.player.mousePos = [ev.pageX - game.offsetX, ev.pageY - game.offsetY];
         });
 
         $(document).on('keydown', function(ev) {

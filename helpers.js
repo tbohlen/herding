@@ -71,13 +71,19 @@ function boundedRand(min, max) {
     return min + Math.random() * (max - min);
 }
 
+//TODO: put this all into a custom vector object
+
 /*
  * Function: distance
- * Returns the distance between two points specified by (x, y) and (x2, y2).
- *
+ * Returns the distance between two vectors.
  */
-function distance(x1, y1, x2, y2) {
-    return Math.sqrt(Math.pow(x2-x1, 2) + Math.pow(y2-y1, 2))
+
+function distance(vec1, vec2) {
+    var sum = 0;
+    for (var i = 0; i < vec1.length; i++) {
+        sum += Math.pow(vec2[i] - vec1[i], 2);
+    }
+    return Math.sqrt(sum);
 }
 
 /*
@@ -133,13 +139,60 @@ function scale(vec, scalar) {
 }
 
 function normalized(vec) {
-    length = distance(vec[0], vec[1], 0, 0);
+    var zero = []
+    for (var i = 0; i < vec.length; i++) {
+        zero.push(0);
+    }
+    length = distance(vec, zero);
     if (length === 0) {
         return vec
     }
     else {
         return scale(vec, 1/length);
     }
+}
+
+/*
+ * Function: makeScale
+ * Makes the vector the given length
+ */
+function makeLen(vec, scalar) {
+    return scale(normalized(vec), scalar);
+}
+
+/*
+ * Function: bound
+ * Bounds the length of the vector between low and high
+ */
+function bound(low, high, vec) {
+    var vecLen = len(vec);
+    if (vecLen < low) {
+        return makeLen(vec, low);
+    }
+    else if (vecLen > high) {
+        return makeLen(vec, high);
+    }
+    return vec;
+}
+
+/*
+ * Function: dot
+ * Returns the dot product of vec1 and vec2
+ */
+function dot(vec1, vec2) {
+    var sum = 0;
+    for (var i = 0; i < vec1.length; i++) {
+        sum += vec1[i] * vec2[i];
+    }
+    return sum;
+}
+
+/*
+ * Function: orthogonal
+ * Returns the unit vector orthogonal to the given vector. Only works in 2D
+ */
+function orthogonal(vec) {
+    return normalized([vec[1], -1 * vec[0]]);
 }
 
 /*
