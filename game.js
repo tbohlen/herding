@@ -4,6 +4,7 @@ var DECISION_LOOP_TIME = 1000/30;
 var MOVE_LOOP_TIME = 1000/30;
 var DRAW_LOOP_TIME = 1000/30;
 var MOVE_BUFFER = 0.1;
+var BACKGROUND = [255, 255, 255];
 
 /*
  * Constructor: Game
@@ -15,6 +16,8 @@ function Game() {
     this.context = this.canvas[0].getContext("2d");
     this.width = this.canvas.width();
     this.height = this.canvas.height();
+
+    this.background = getColorString(BACKGROUND);
 
     offset = this.canvas.offset();
     this.offsetX = offset.left;
@@ -68,7 +71,7 @@ var clearScreen = function(game, color) {
  */
 function drawLoop(game) {
     // clean the screen
-    clearScreen(game, "rgb(220, 220, 220)");
+    clearScreen(game, game.background);
     // have the level draw itself
     game.level.draw(game);
 }
@@ -136,6 +139,11 @@ $(document).ready(function() {
                     // down
                     game.level.player.down = 1;
                     break;
+                case 32:
+                    // space
+                    window.clearInterval(game.drawLoopID);
+                    window.clearInterval(game.decisionLoopID);
+                    window.clearInterval(game.moveLoopID);
             }
         });
 

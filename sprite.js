@@ -27,9 +27,7 @@ Sprite.prototype.RADIUS = 4;
  * Member Of: Sprite
  */
 Sprite.prototype.draw = function(game) {
-    //console.log("Vel: " + this.vel[0].toString() + ", " + this.vel[1].toString());
-    //console.log("Pos: " + this.pos[0].toString() + ", " + this.pos[1].toString());
-    drawCircle(this.pos[0], this.pos[1], this.RADIUS, this.color, game.context);
+    drawCircle(this.pos[0], this.pos[1], this.RADIUS, this.getColor(game.level), game.context);
 };
 
 /*
@@ -44,6 +42,15 @@ Sprite.prototype.draw = function(game) {
  */
 Sprite.prototype.evalDeriv = function(level) {
 
+};
+
+/*
+ * Method: getColor
+ * Returns the color of the sprite
+ * Member Of: Sprite
+ */
+Sprite.prototype.getColor = function(level) {
+    return this.color;
 };
 
 /*
@@ -112,15 +119,16 @@ function SheepSprite(color, startPos, key) {
     this.type = "SheepSprite";
     this.state = RELAXED;
     this.threat = null;
+    this.group = null;
 }
 
 inherits(SheepSprite, Sprite);
 
-SheepSprite.prototype.RADIUS = 4;
+SheepSprite.prototype.RADIUS = 6;
 
 SheepSprite.prototype.VIEW_DIST = 100;
-SheepSprite.prototype.SAME_DIST = 80;
-SheepSprite.prototype.NEIGHBOR_DIST = 50; // distance at which another animal can be considered a neighbor
+SheepSprite.prototype.SAME_VIEW_DIST = 80;
+SheepSprite.prototype.NEIGHBOR_DIST = 80; // distance at which another animal can be considered a neighbor
 SheepSprite.prototype.THREAT_FORGET_DIST = 150;
 SheepSprite.prototype.THREAT_AGREE_DIST = 150;
 
@@ -131,15 +139,55 @@ SheepSprite.prototype.MAX_THREAT_ACCEL = 0.1; // maximum acceleration when threa
 
 SheepSprite.prototype.THREATENED_SAME_FORCE = 0.03; // distance at which attraction beings if threatened
 SheepSprite.prototype.THREAT_FORCE = 3; // scale for threat force
-SheepSprite.prototype.RUN_WITH_CONST = 0.1;
+SheepSprite.prototype.RUN_WITH_CONST = 0.5;
+SheepSprite.prototype.PERCENT_NEIGHBROS_FOR_HEARD = 0.4;
 
-SheepSprite.prototype.RELAXED_FORCE_DIST = 15; // distance at which attraction begins if unthreatened
-SheepSprite.prototype.RELAXED_FORCE_BUFF = 60; // size of area at which no force is felt if unthreatened
-SheepSprite.prototype.SAME_FORCE = 1; // scale for force to move away from neighbors
+SheepSprite.prototype.RELAXED_FORCE_DIST = 10; // distance at which attraction begins if unthreatened
+SheepSprite.prototype.RELAXED_FORCE_BUFF = 30; // size of area at which no force is felt if unthreatened
+SheepSprite.prototype.RELAXED_SAME_FORCE = 20; // scale for force to move away from neighbors
+SheepSprite.prototype.SAME_ATTR_FORCE = 0.01;
 
 SheepSprite.prototype.FORCE_SCALE = 0.02; // scales the force to create a velocity
 SheepSprite.prototype.ABSOLUTE_BUFFER = 0.0001 // adds a boost away from any obstacles to avoid drift due to floating point rounding
 SheepSprite.prototype.DAMPING = 0.1;
+
+/*
+ * Method: getColor
+ * see Sprite.getColor
+ *
+ * Member Of: SheepSprite
+ */
+SheepSprite.prototype.getColor = function(level) {
+    var numGroups = Object.keys(level.sheepGroups).length;
+    var h = this.group/numGroups;
+    var s = 0.5;
+    var v = 1;
+    return hsvToRgb(h, s, v);
+};
+
+/*
+ * Method: getNeighbors
+ * Finds all neighbors of this sheep and saves the list
+ *
+ * Parameters:
+ * level
+ *
+ * Member Of: SheepSprite
+ */
+SheepSprite.prototype.getNeighbors = function(level) {
+    //console.log("key is " + this.key)
+    this.neighbors = [];
+    for (var key in level.sheep) {
+        if (level.sheep.hasOwnProperty(key) && key != this.key) {
+            var other = level.sheep[key];
+            var otherDist = distance(other.pos, this.pos);
+
+            if (otherDist < this.NEIGHBOR_DIST) {
+                this.neighbors.push(other);
+            }
+        }
+    }
+};
 
 /*
  * Method: SheepSprite.evalDeriv
@@ -171,7 +219,7 @@ SheepSprite.prototype.evalDeriv = function(level) {
             var other = level.sheep[key];
             var otherDist = distance(other.pos, this.pos);
 
-            if (otherDist < this.SAME_DIST) {
+            if (otherDist < this.SAME_VIEW_DIST) {
                 // if the other sheep is very close and threatened, this one can
                 // become threatened
                 if (otherDist < this.NEIGHBOR_DIST && other.state == THREATENED) {
@@ -338,13 +386,13 @@ SheepSprite.prototype.getRelaxedSheepForce = function(other, dir) {
         return scale(other.vel, this.RUN_WITH_CONST);
     }
     else if (dist > distAttr) {
-        return scale(dir, -1 * (dist - distAttr));
+        return scale(dir, -1 * this.SAME_ATTR_FORCE * (dist - distAttr));
     }
     else if (dist < distRep) {
         if (dist < 0.01) {
             dist = 0.01;
         }
-        return scale(dir, this.SAME_FORCE * Math.pow(2, 1/dist));
+        return scale(dir, this.RELAXED_SAME_FORCE * Math.pow(2, 1/dist));
     }
     else {
         return [0, 0];
@@ -372,9 +420,10 @@ function Player(color, startPos, key) {
 
 inherits(Player, Sprite);
 
-Player.prototype.RADIUS = 8;
-Player.prototype.MAX_VEL = 5;
+Player.prototype.RADIUS = 4;
+Player.prototype.MAX_VEL = 6;
 Player.prototype.VEL_SCALE = 0.05;
+Player.prototype.ABSOLUTE_BUFFER = 0.0001 // adds a boost away from any obstacles to avoid drift due to floating point rounding
 
 /*
  * Method: evalDeriv
@@ -389,4 +438,30 @@ Player.prototype.evalDeriv = function(level) {
 
     // check the velocity in case its hitting boundaries
     this.checkBoundaries();
+
+    this.checkColissions(level);
+};
+
+/*
+ * Method: checkColissions
+ * Checks for collisions with other objects and prevents them.
+ *
+ * Parameters:
+ * level
+ *
+ * Member Of: Player
+ */
+Player.prototype.checkColissions = function(level) {
+    for (var key in level.sheep) {
+        var other = level.sheep[key];
+        var otherDist = distance(other.pos, this.pos);
+        if (otherDist < this.RADIUS + other.RADIUS) {
+            var direction = normalized(subVectors(other.pos, this.pos));
+            var magnitude = dot(direction, this.vel) + this.ABSOLUTE_BUFFER;
+            if (magnitude > 0) {
+                var badComponent = scale(direction, magnitude);
+                this.vel = subVectors(this.vel, badComponent);
+            }
+        }
+    }
 };
