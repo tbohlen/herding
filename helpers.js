@@ -204,14 +204,26 @@ function orthogonal(vec) {
  * x - the x coord of the center
  * y - the y coord of the center
  * radius - the radius of the circle
- * ctx - context to draw on
  */
-function drawCircle(x, y, radius, color, ctx) {
-    game.context.fillStyle = "rgb(" + Math.floor(color[0]).toString() + ", " + Math.floor(color[1]).toString() + ", " + Math.floor(color[2]).toString() + ")";
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI*2, true); 
-    ctx.closePath();
+function drawCircle(x, y, radius, color) {
+    game.context.fillStyle = getColorString(color);
+    game.context.beginPath();
+    game.context.arc(x, y, radius, 0, Math.PI*2, true); 
+    game.context.closePath();
     game.context.fill();
+}
+
+/*
+ * Function: drawLine
+ * Draws a line to the screen from p1 to p2 with the given color and width.
+ */
+function drawLine(p1, p2, color, width) {
+    game.context.strokeStyle = getColorString(color);
+    game.context.lineWidth = width;
+    game.context.beginPath();
+    game.context.moveTo(p1[0], p1[1]);
+    game.context.lineTo(p2[0], p2[1]);
+    game.context.stroke();
 }
 
 /*

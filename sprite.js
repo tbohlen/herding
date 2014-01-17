@@ -151,7 +151,6 @@ SheepSprite.prototype.RELAXED_SAME_FORCE = 20; // scale for force to move away f
 SheepSprite.prototype.SAME_ATTR_FORCE = 0.01;
 
 SheepSprite.prototype.FORCE_SCALE = 0.02; // scales the force to create a velocity
-SheepSprite.prototype.ABSOLUTE_BUFFER = 0.0001 // adds a boost away from any obstacles to avoid drift due to floating point rounding
 SheepSprite.prototype.DAMPING = 0.1;
 
 /*
@@ -343,7 +342,7 @@ SheepSprite.prototype.evalDeriv = function(level) {
     // allowed
     for (var i = 0; i < absolutes.length; i++) {
         var direction = absolutes[i];
-        var magnitude = dot(direction, this.vel) + this.ABSOLUTE_BUFFER;
+        var magnitude = dot(direction, this.vel) + VELOCITY_BUFFER;
         if (magnitude > 0) {
             var badComponent = scale(direction, magnitude);
             this.vel = subVectors(this.vel, badComponent);
@@ -351,7 +350,7 @@ SheepSprite.prototype.evalDeriv = function(level) {
     }
 
     // check the velocity in case its hitting boundaries
-    this.checkBoundaries();
+    //this.checkBoundaries();
 
     // bound the velocity
     var maxVel = (this.threat != null) ? this.MAX_THREAT_VEL : this.MAX_VEL;
@@ -466,7 +465,6 @@ inherits(Player, Sprite);
 Player.prototype.RADIUS = 4;
 Player.prototype.MAX_VEL = 6;
 Player.prototype.VEL_SCALE = 0.05;
-Player.prototype.ABSOLUTE_BUFFER = 0.0001 // adds a boost away from any obstacles to avoid drift due to floating point rounding
 
 /*
  * Method: evalDeriv
@@ -480,7 +478,7 @@ Player.prototype.evalDeriv = function(level) {
     this.accel = [0, 0];
 
     // check the velocity in case its hitting boundaries
-    this.checkBoundaries();
+    //this.checkBoundaries();
 
     this.checkColissions(level);
 };
@@ -500,7 +498,7 @@ Player.prototype.checkColissions = function(level) {
         var otherDist = distance(other.pos, this.pos);
         if (otherDist < this.RADIUS + other.RADIUS) {
             var direction = normalized(subVectors(other.pos, this.pos));
-            var magnitude = dot(direction, this.vel) + this.ABSOLUTE_BUFFER;
+            var magnitude = dot(direction, this.vel) + VELOCITY_BUFFER;
             if (magnitude > 0) {
                 var badComponent = scale(direction, magnitude);
                 this.vel = subVectors(this.vel, badComponent);

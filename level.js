@@ -8,12 +8,19 @@ function Level() {
     this.logicSprits = {};
     this.sheep = {};
     this.sheepGroups = {};
-    for (var i = 0; i < 100; i++) {
+    for (var i = 0; i < 20; i++) {
         var key = i.toString();
         var newSheep = new SheepSprite([0, 0, 0], [200 + 10 * Math.floor(i/5), 200 + (10 * (i%5))], key);
         this.sheep[key] = newSheep;
     }
     this.player = new Player([255, 0, 0], [20, 20]);
+
+    // find all barriers
+    this.barriers = new Barriers();
+    this.barriers.add([[0, 0], [0, game.height]]);
+    this.barriers.add([[game.width, 0], [game.width, game.height]]);
+    this.barriers.add([[0, 0], [game.width, 0]]);
+    this.barriers.add([[0, game.height], [game.width, game.height]]);
 }
 
 /*
@@ -23,6 +30,7 @@ function Level() {
  * Member Of: Level
  */
 Level.prototype.draw = function(game) {
+    this.barriers.draw(game);
     for (var key in this.sheep) {
         if (this.sheep.hasOwnProperty(key)) {
             this.sheep[key].draw(game);
@@ -58,9 +66,11 @@ Level.prototype.logic = function(game) {
     for (var key in this.sheep) {
         if (this.sheep.hasOwnProperty(key)) {
             this.sheep[key].evalDeriv(this);
+            this.barriers.test(this.sheep[key]);
         }
     }
     this.player.evalDeriv(this);
+    this.barriers.test(this.player);
 };
 
 /*
