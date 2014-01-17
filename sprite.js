@@ -134,15 +134,15 @@ SheepSprite.prototype.NEIGHBOR_DIST = 60; // distance at which another animal ca
 SheepSprite.prototype.THREAT_FORGET_DIST = 200;
 
 SheepSprite.prototype.MAX_VEL = 1.5; // max velocity when relaxed
-SheepSprite.prototype.MAX_THREAT_VEL = 1.5; // max velocity when threatened
-SheepSprite.prototype.MAX_ACCEL = 0.05; // maximum acceleration when relaxed
+SheepSprite.prototype.MAX_THREAT_VEL = 3; // max velocity when threatened
+SheepSprite.prototype.MAX_ACCEL = 0.03; // maximum acceleration when relaxed
 SheepSprite.prototype.MAX_THREAT_ACCEL = 0.08; // maximum acceleration when threatened
 
 SheepSprite.prototype.GROUP_THINK_PERCENT = 0.2;
 SheepSprite.prototype.HERD_FORCE = 0.1;
 SheepSprite.prototype.SAME_FORCE_DIST = 10; // distance at which attraction begins if unthreatened
 
-SheepSprite.prototype.THREATENED_SAME_FORCE = 1; // scale force between sheep when threatened
+SheepSprite.prototype.THREATENED_SAME_FORCE = 3; // scale force between sheep when threatened
 SheepSprite.prototype.HERD_THREAT_FORCE = 3; // scale for force of threat on herd center
 SheepSprite.prototype.SOLO_THREAT_FORCE = 3; // scale for force of threat on individual
 
@@ -159,8 +159,8 @@ SheepSprite.prototype.DAMPING = 0.05;
  */
 SheepSprite.prototype.getColor = function(level) {
     var numGroups = Object.keys(level.sheepGroups).length;
-    var h = this.group/numGroups;
-    var s = 0.5;
+    var h = 50; //this.group/numGroups;
+    var s = 0.6;
     if (this.state == THREATENED) {
         s = 1;
     }

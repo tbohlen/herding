@@ -8,13 +8,54 @@ function Level() {
     this.logicSprits = {};
     this.sheep = {};
     this.sheepGroups = {};
-    for (var i = 0; i < 20; i++) {
+    this.makeSprites();
+    this.makeBarriers();
+    this.makeGoal();
+}
+
+/*
+ * Method: makeGoal
+ * Creates the goal on the level
+ *
+ * Member Of: Level
+ */
+Level.prototype.makeGoal = function() {
+    this.goal = new Goal([game.width - 100, 0], [game.width, game.height], [100, 255, 100])
+};
+
+/*
+ * Method: makeBarriers
+ * Makes the barriers on the level
+ *
+ * Member Of: Level
+ */
+Level.prototype.makeBarriers = function() {
+    // find all barriers
+    this.outerBarriers = new Barriers();
+    this.outerBarriers.add([[0, 0], [0, game.height]]);
+    this.outerBarriers.add([[game.width, 0], [game.width, game.height]]);
+    this.outerBarriers.add([[0, 0], [game.width, 0]]);
+    this.outerBarriers.add([[0, game.height], [game.width, game.height]]);
+
+    this.barriers = new Barriers();
+    this.barriers.add([[0, 200], [game.width, 200]]);
+    this.barriers.add([[0, 400], [game.width, 400]]);
+};
+
+/*
+ * Method: makeSprites
+ * Creates the sprites in the level
+ *
+ * Member Of: Level
+ */
+Level.prototype.makeSprites = function() {
+    for (var i = 0; i < 30; i++) {
         var key = i.toString();
-        var newSheep = new SheepSprite([0, 0, 0], [200 + 10 * Math.floor(i/5), 200 + (10 * (i%5))], key);
+        var newSheep = new SheepSprite([0, 0, 0], [500 + 10 * Math.floor(i/5), 280 + (10 * (i%5))], key);
         this.sheep[key] = newSheep;
     }
-    this.player = new Player([255, 0, 0], [20, 20]);
-}
+    this.player = new Player([255, 0, 0], [20, 300]);
+};
 
 /*
  * Method: resize
@@ -23,12 +64,8 @@ function Level() {
  * Member Of: Level
  */
 Level.prototype.resize = function() {
-    // find all barriers
-    this.outerBarriers = new Barriers();
-    this.outerBarriers.add([[0, 0], [0, game.height]]);
-    this.outerBarriers.add([[game.width, 0], [game.width, game.height]]);
-    this.outerBarriers.add([[0, 0], [game.width, 0]]);
-    this.outerBarriers.add([[0, game.height], [game.width, game.height]]);
+    this.makeGoal();
+    this.makeBarriers();
 };
 
 /*
@@ -38,7 +75,9 @@ Level.prototype.resize = function() {
  * Member Of: Level
  */
 Level.prototype.draw = function(game) {
+    this.goal.draw(game);
     this.outerBarriers.draw(game);
+    this.barriers.draw(game);
     for (var key in this.sheep) {
         if (this.sheep.hasOwnProperty(key)) {
             this.sheep[key].draw(game);
@@ -75,10 +114,11 @@ Level.prototype.logic = function(game) {
         if (this.sheep.hasOwnProperty(key)) {
             this.sheep[key].evalDeriv(this);
             this.outerBarriers.test(this.sheep[key]);
+            this.barriers.test(this.sheep[key]);
         }
     }
     this.player.evalDeriv(this);
-    this.outerBarriers.test(this.player);
+    this.barriers.test(this.player);
 };
 
 /*
@@ -118,6 +158,12 @@ Level.prototype.move = function(game) {
         }
     }
     this.player.applyDeriv();
+
+    // end condition
+    if (this.goal.test(this)) {
+        var coords = getTextXY("Well Herded!", game.context);
+        game.context.fillText("Well Herded!", coords[0], coords[1]);
+    }
 };
 
 /*

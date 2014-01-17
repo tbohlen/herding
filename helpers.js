@@ -235,6 +235,13 @@ function getColorString(color) {
 }
 
 /*
+ * Function: getAlphaColorString
+ * Returns a string that can be passed to the game context as an rgba value.
+ */
+function getAlphaColorString(color) {
+    return "rgba(" + Math.floor(color[0]).toString() + ", " + Math.floor(color[1]).toString() + ", " + Math.floor(color[2]).toString() + ", " + color[3].toString() + ")";
+}
+/*
  * Constructor: Emitter
  * Simple event emitter
  */

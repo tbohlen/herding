@@ -24,9 +24,17 @@ function Game() {
     offset = this.canvas.offset();
     this.offsetX = offset.left;
     this.offsetY = offset.top;
-
-    this.level = new Level();
 }
+
+/*
+ * Method: start
+ * Starts the game on the first level
+ *
+ * Member Of: Game
+ */
+Game.prototype.start = function() {
+    this.level = new Level();
+};
 
 /*
  * Function: resize
@@ -44,7 +52,9 @@ Game.prototype.resize = function() {
     this.offsetY = offset.top;
 
     // tell the level about the resize
-    game.level.resize();
+    if (game.level != null) {
+        game.level.resize();
+    }
 };
 
 
@@ -94,13 +104,14 @@ function decisionLoop(game) {
  * Moves the sprites.
  */
 function moveLoop(game) {
-    game.level.move();
+    game.level.move(game);
 }
 
 function loadGame(callback) {
     console.log("Loading...");
     window.game = new Game();
     window.game.resize();
+    game.start();
     callback(window.game);
 }
 
