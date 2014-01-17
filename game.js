@@ -41,6 +41,9 @@ Game.prototype.resize = function() {
     offset = this.canvas.offset();
     this.offsetX = offset.left;
     this.offsetY = offset.top;
+
+    // tell the level about the resize
+    game.level.resize();
 };
 
 

@@ -14,14 +14,22 @@ function Level() {
         this.sheep[key] = newSheep;
     }
     this.player = new Player([255, 0, 0], [20, 20]);
-
-    // find all barriers
-    this.barriers = new Barriers();
-    this.barriers.add([[0, 0], [0, game.height]]);
-    this.barriers.add([[game.width, 0], [game.width, game.height]]);
-    this.barriers.add([[0, 0], [game.width, 0]]);
-    this.barriers.add([[0, game.height], [game.width, game.height]]);
 }
+
+/*
+ * Method: resize
+ * Called as a notification when the game is resized
+ *
+ * Member Of: Level
+ */
+Level.prototype.resize = function() {
+    // find all barriers
+    this.outerBarriers = new Barriers();
+    this.outerBarriers.add([[0, 0], [0, game.height]]);
+    this.outerBarriers.add([[game.width, 0], [game.width, game.height]]);
+    this.outerBarriers.add([[0, 0], [game.width, 0]]);
+    this.outerBarriers.add([[0, game.height], [game.width, game.height]]);
+};
 
 /*
  * Method: draw
@@ -30,7 +38,7 @@ function Level() {
  * Member Of: Level
  */
 Level.prototype.draw = function(game) {
-    this.barriers.draw(game);
+    this.outerBarriers.draw(game);
     for (var key in this.sheep) {
         if (this.sheep.hasOwnProperty(key)) {
             this.sheep[key].draw(game);
@@ -66,11 +74,11 @@ Level.prototype.logic = function(game) {
     for (var key in this.sheep) {
         if (this.sheep.hasOwnProperty(key)) {
             this.sheep[key].evalDeriv(this);
-            this.barriers.test(this.sheep[key]);
+            this.outerBarriers.test(this.sheep[key]);
         }
     }
     this.player.evalDeriv(this);
-    this.barriers.test(this.player);
+    this.outerBarriers.test(this.player);
 };
 
 /*
