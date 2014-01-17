@@ -118,7 +118,7 @@ SheepSprite.prototype.MAX_ACCEL = 0.05; // maximum acceleration when relaxed
 SheepSprite.prototype.MAX_THREAT_ACCEL = 0.1; // maximum acceleration when threatened
 
 SheepSprite.prototype.GROUP_THINK_PERCENT = 0.2;
-SheepSprite.prototype.HERD_FORCE = 2;
+SheepSprite.prototype.HERD_FORCE = 1;
 SheepSprite.prototype.SAME_FORCE_DIST = 30; // distance at which repulsion stops between sheep
 
 SheepSprite.prototype.THREATENED_SAME_FORCE = 2; // scale force between sheep when threatened

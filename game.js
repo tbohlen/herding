@@ -38,6 +38,20 @@ Game.prototype.start = function() {
 };
 
 /*
+ * Method: nextLevel
+ * Sets the level of the game
+ *
+ * Parameters:
+ * level - the level to go to
+ *
+ * Member Of: Game
+ */
+Game.prototype.nextLevel = function(level) {
+    this.level = level;
+    level.resize();
+};
+
+/*
  * Function: resize
  * Resizes the game to match the canvas.
  */

@@ -211,10 +211,15 @@ Level.prototype.move = function(game) {
 
     // end condition
     if (this.goal.test(this)) {
-        var coords = getTextXY("Well Herded!", game.context);
-        game.context.fillText("Well Herded!", coords[0], coords[1]);
+        this.done();
     }
 };
+
+Level.prototype.done = function() {
+    //var coords = getTextXY("Well Herded!", game.context);
+    //game.context.fillText("Well Herded!", coords[0], coords[1]);
+    game.nextLevel(new Level2());
+}
 
 /*
  * Method: findSheepGroups
