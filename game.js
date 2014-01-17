@@ -6,6 +6,7 @@ var DRAW_LOOP_TIME = 1000/30;
 var MOVE_BUFFER = 0.1;
 var BACKGROUND = [255, 255, 255];
 VELOCITY_BUFFER = 0.0001 // adds a boost away from any obstacles to avoid drift due to floating point rounding
+POSITION_BUFFER = 0.0001;
 
 /*
  * Constructor: Game

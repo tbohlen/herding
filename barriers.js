@@ -59,7 +59,7 @@ Barriers.prototype.test = function(sprite) {
         
         // the distance along the velocity vector to the intersect depends on
         // the radius
-        var tOffset = (sprite.RADIUS / len(sprite.vel)) + Math.abs((0.5 * this.WIDTH) / (dot(sprite.vel, ort)));
+        var tOffset = Math.abs((sprite.RADIUS + 0.5 * this.WIDTH) / (dot(sprite.vel, ort)));
         if (ts[0] > 0 && ts[1] > 0 && ts[0] < 1 + tOffset && ts[1] < 1) {
             // we have a collision
             // find the direction of approach, set the new position, and curb
@@ -68,12 +68,11 @@ Barriers.prototype.test = function(sprite) {
             var ortDot = dot(ort, sprite.vel);
             // XXX: just setting the next position. Is there a nicer way to do
             // this?
-            sprite.pos = addVectors(sprite.pos, scale(sprite.vel, ts[0]-tOffset));
+            sprite.pos = addVectors(sprite.pos, scale(sprite.vel, ts[0]-tOffset-POSITION_BUFFER));
 
             // the "bad" direction of motion is ort scaled by -ortDot
-            var badComponent = scale(ort, -ortDot);
+            var badComponent = scale(ort, (-ortDot+VELOCITY_BUFFER));
             sprite.vel = addVectors(sprite.vel, badComponent);
-            
         }
     }
 };
