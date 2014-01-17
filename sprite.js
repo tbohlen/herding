@@ -123,7 +123,7 @@ SheepSprite.prototype.SAME_FORCE_DIST = 30; // distance at which repulsion stops
 
 SheepSprite.prototype.THREATENED_SAME_FORCE = 2; // scale force between sheep when threatened
 SheepSprite.prototype.HERD_THREAT_FORCE = 1; // scale for force of threat on herd center
-SheepSprite.prototype.SOLO_THREAT_FORCE = 2; // scale for force of threat on individual
+SheepSprite.prototype.SOLO_THREAT_FORCE = 4; // scale for force of threat on individual
 
 SheepSprite.prototype.RELAXED_SAME_FORCE = 2; // scale for force to move away from neighbors
 
@@ -137,13 +137,13 @@ SheepSprite.prototype.DAMPING = 0.1;
  * Member Of: SheepSprite
  */
 SheepSprite.prototype.getColor = function(level) {
-    var numGroups = Object.keys(level.sheepGroups).length;
-    var h = 50; //this.group/numGroups;
+    //var numGroups = Object.keys(level.sheepGroups).length;
+    var h = 0.9; //this.group/numGroups;
     var s = 0.6;
     if (this.state == THREATENED) {
         s = 1;
     }
-    var v = 1;
+    var v = 0.8;
     return hsvToRgb(h, s, v);
 };
 
