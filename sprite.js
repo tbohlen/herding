@@ -132,26 +132,24 @@ SheepSprite.prototype.VIEW_DIST = 100;
 SheepSprite.prototype.SAME_VIEW_DIST = 80;
 SheepSprite.prototype.NEIGHBOR_DIST = 60; // distance at which another animal can be considered a neighbor
 SheepSprite.prototype.THREAT_FORGET_DIST = 200;
-SheepSprite.prototype.THREAT_AGREE_DIST = 150;
 
 SheepSprite.prototype.MAX_VEL = 1.5; // max velocity when relaxed
 SheepSprite.prototype.MAX_THREAT_VEL = 1.5; // max velocity when threatened
 SheepSprite.prototype.MAX_ACCEL = 0.05; // maximum acceleration when relaxed
 SheepSprite.prototype.MAX_THREAT_ACCEL = 0.08; // maximum acceleration when threatened
 
-SheepSprite.prototype.THREATENED_SAME_FORCE = 0.03; // distance at which attraction beings if threatened
-SheepSprite.prototype.HERD_THREAT_FORCE = 1; // scale for threat force
-SheepSprite.prototype.SOLO_THREAT_FORCE = 3; // scale for threat force
-SheepSprite.prototype.RUN_WITH_CONST = 0.5;
-SheepSprite.prototype.GROUP_THINK_PERCENT = 0.1;
-SheepSprite.prototype.HERD_FORCE = 0.01;
+SheepSprite.prototype.GROUP_THINK_PERCENT = 0.2;
+SheepSprite.prototype.HERD_FORCE = 0.1;
+SheepSprite.prototype.SAME_FORCE_DIST = 10; // distance at which attraction begins if unthreatened
 
-SheepSprite.prototype.RELAXED_FORCE_DIST = 10; // distance at which attraction begins if unthreatened
+SheepSprite.prototype.THREATENED_SAME_FORCE = 1; // scale force between sheep when threatened
+SheepSprite.prototype.HERD_THREAT_FORCE = 3; // scale for force of threat on herd center
+SheepSprite.prototype.SOLO_THREAT_FORCE = 3; // scale for force of threat on individual
+
 SheepSprite.prototype.RELAXED_SAME_FORCE = 20; // scale for force to move away from neighbors
-SheepSprite.prototype.SAME_ATTR_FORCE = 0.01;
 
 SheepSprite.prototype.FORCE_SCALE = 0.02; // scales the force to create a velocity
-SheepSprite.prototype.DAMPING = 0.1;
+SheepSprite.prototype.DAMPING = 0.05;
 
 /*
  * Method: getColor
@@ -293,13 +291,12 @@ SheepSprite.prototype.evalDeriv = function(level) {
         this.threat = level.player;
         this.state = THREATENED;
     }
-    else if (this.checkHerdState(level)) {
-        // if the herd is threatened, become threatened.
-        // This statement makes sure that the next statement is not executed if
-        // we just got threatened
+    else {
+        this.checkHerdState(level);
     }
 
     if (this.state == THREATENED) {
+        // check to see if we should forget this threat
         var threatCenterDist = distance(groupObj[1], this.threat.pos);
         var threatDist = distance(this.pos, this.threat.pos);
 
@@ -307,7 +304,6 @@ SheepSprite.prototype.evalDeriv = function(level) {
             this.threat = null;
             this.state = RELAXED;
         }
-
     }
 
     if (this.state == THREATENED) {
@@ -328,7 +324,7 @@ SheepSprite.prototype.evalDeriv = function(level) {
 
     // be effected by sheep nearby (by definition they must be in your herd)
     var sameResult = this.getSameForces(level);
-    var absolutes = sameResult[1];
+    absolutes = absolutes.concat(sameResult[1]);
     totalForce = addVectors(totalForce, sameResult[0]);
 
     // add the herd force
@@ -348,9 +344,6 @@ SheepSprite.prototype.evalDeriv = function(level) {
             this.vel = subVectors(this.vel, badComponent);
         }
     }
-
-    // check the velocity in case its hitting boundaries
-    //this.checkBoundaries();
 
     // bound the velocity
     var maxVel = (this.threat != null) ? this.MAX_THREAT_VEL : this.MAX_VEL;
@@ -418,7 +411,7 @@ SheepSprite.prototype.getSheepForce = function(other) {
     // repelled if close, no force if far away
     var dist = distance(this.pos, other.pos);
     var dir = normalized(subVectors(this.pos, other.pos));
-    var distRep = (2*this.RADIUS) + this.RELAXED_FORCE_DIST;
+    var distRep = (2*this.RADIUS) + this.SAME_FORCE_DIST;
     var distEff = dist - (2*this.RADIUS);
     var scaleVal = (this.state == THREATENED) ? this.THREATENED_SAME_FORCE : this.RELAXED_SAME_FORCE;
     var force = [0, 0];
