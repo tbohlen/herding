@@ -98,12 +98,14 @@ Sprite.prototype.getForce = function(otherType) {
  */
 Sprite.prototype.checkBoundaries = function() {
     var nextPos = addVectors(this.pos, this.vel);
+    var velMag = len(this.vel);
     if (nextPos[0] > window.game.width - this.RADIUS || nextPos[0] < this.RADIUS) {
         this.vel[0] = 0;
     }
     if (nextPos[1] > window.game.height - this.RADIUS || nextPos[1] < this.RADIUS) {
         this.vel[1] = 0;
     }
+    makeLen(this.vel, velMag); // if you hit a boundary, keep moving fast
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -128,22 +130,23 @@ SheepSprite.prototype.RADIUS = 6;
 
 SheepSprite.prototype.VIEW_DIST = 100;
 SheepSprite.prototype.SAME_VIEW_DIST = 80;
-SheepSprite.prototype.NEIGHBOR_DIST = 80; // distance at which another animal can be considered a neighbor
-SheepSprite.prototype.THREAT_FORGET_DIST = 150;
+SheepSprite.prototype.NEIGHBOR_DIST = 60; // distance at which another animal can be considered a neighbor
+SheepSprite.prototype.THREAT_FORGET_DIST = 200;
 SheepSprite.prototype.THREAT_AGREE_DIST = 150;
 
-SheepSprite.prototype.MAX_VEL = 2 // max velocity when relaxed
-SheepSprite.prototype.MAX_THREAT_VEL = 2; // max velocity when threatened
+SheepSprite.prototype.MAX_VEL = 1.5; // max velocity when relaxed
+SheepSprite.prototype.MAX_THREAT_VEL = 1.5; // max velocity when threatened
 SheepSprite.prototype.MAX_ACCEL = 0.05; // maximum acceleration when relaxed
-SheepSprite.prototype.MAX_THREAT_ACCEL = 0.1; // maximum acceleration when threatened
+SheepSprite.prototype.MAX_THREAT_ACCEL = 0.08; // maximum acceleration when threatened
 
 SheepSprite.prototype.THREATENED_SAME_FORCE = 0.03; // distance at which attraction beings if threatened
-SheepSprite.prototype.THREAT_FORCE = 3; // scale for threat force
+SheepSprite.prototype.HERD_THREAT_FORCE = 1; // scale for threat force
+SheepSprite.prototype.SOLO_THREAT_FORCE = 3; // scale for threat force
 SheepSprite.prototype.RUN_WITH_CONST = 0.5;
-SheepSprite.prototype.PERCENT_NEIGHBROS_FOR_HEARD = 0.4;
+SheepSprite.prototype.GROUP_THINK_PERCENT = 0.1;
+SheepSprite.prototype.HERD_FORCE = 0.01;
 
 SheepSprite.prototype.RELAXED_FORCE_DIST = 10; // distance at which attraction begins if unthreatened
-SheepSprite.prototype.RELAXED_FORCE_BUFF = 30; // size of area at which no force is felt if unthreatened
 SheepSprite.prototype.RELAXED_SAME_FORCE = 20; // scale for force to move away from neighbors
 SheepSprite.prototype.SAME_ATTR_FORCE = 0.01;
 
@@ -161,6 +164,9 @@ SheepSprite.prototype.getColor = function(level) {
     var numGroups = Object.keys(level.sheepGroups).length;
     var h = this.group/numGroups;
     var s = 0.5;
+    if (this.state == THREATENED) {
+        s = 1;
+    }
     var v = 1;
     return hsvToRgb(h, s, v);
 };
@@ -190,6 +196,81 @@ SheepSprite.prototype.getNeighbors = function(level) {
 };
 
 /*
+ * Method: checkHerdState
+ * Checks to see if a good number of sheep in the herd are threatened. If so,
+ * makes this one threatened too.
+ *
+ * Parameters:
+ * level
+ *
+ * Member Of: SheepSprite
+ */
+SheepSprite.prototype.checkHerdState = function(level) {
+    // iterate over this group. If others are threatened, be threatened, too
+    var groupObj = level.sheepGroups[this.group][0];
+    var othersThreatened = 0;
+    var firstThreatened = null;
+    for (var i = 0; i < groupObj.length; i++) {
+        var other = groupObj[i]
+        if (other.state == THREATENED) {
+            if (firstThreatened == null) {
+                firstThreatened = other;
+            }
+            othersThreatened++;
+        }
+    }
+
+    // if more than a certain portion of the group is threatened, become
+    // threatened
+    if (othersThreatened/(groupObj.length) > this.GROUP_THINK_PERCENT) {
+        this.state = THREATENED;
+        this.threat = firstThreatened.threat;
+        return true;
+        // TODO: find nearest threat
+    }
+    return false;
+};
+
+/*
+ * Method: getSameForces
+ * Iterates over all nearby sheep in this group and returns the total force
+ * applied to this sheep by its neighbors
+ *
+ * Parameters:
+ * level
+ *
+ * Member Of: SheepSprite
+ */
+SheepSprite.prototype.getSameForces = function(level) {
+    var groupObj = level.sheepGroups[this.group][0];
+    var totalForce = [0, 0];
+    var absolutes = [];
+    for (var i = 0; i < groupObj.length; i++) {
+        var other = groupObj[i];
+        var otherDist = distance(other.pos, this.pos);
+
+        if (otherDist < this.SAME_VIEW_DIST) {
+
+            // calculate the force applied by the other
+            var forceArr = this.getSheepForce(other);
+            var force = forceArr[0];
+            var absoluteDir = forceArr[1];
+            var absolute = forceArr[2];
+        
+            if (absolute) {
+                // if the force is designated absolute then add this to the
+                // absolutes list
+                absolutes.push(scale(absoluteDir, -1));
+            }
+
+            // add the force
+            totalForce = addVectors(totalForce, force);
+        }
+    }
+    return [totalForce, absolutes];
+};
+
+/*
  * Method: SheepSprite.evalDeriv
  * See Sprite.evalDeriv.
  *
@@ -206,73 +287,53 @@ SheepSprite.prototype.evalDeriv = function(level) {
     
     var totalForce = [0, 0];
     var absolutes = [];
+    var groupObj = level.sheepGroups[this.group];
 
-    // if the player is close, record it as a threat
-    if (distance(level.player.pos, this.pos)
-        < this.VIEW_DIST) {
+    if (distance(level.player.pos, this.pos) < this.VIEW_DIST) {
+        // if the player is close, record it as a threat
         this.threat = level.player;
         this.state = THREATENED;
     }
-
-    for (var key in level.sheep) {
-        if (level.sheep.hasOwnProperty(key) && key != this.key) {
-            var other = level.sheep[key];
-            var otherDist = distance(other.pos, this.pos);
-
-            if (otherDist < this.SAME_VIEW_DIST) {
-                // if the other sheep is very close and threatened, this one can
-                // become threatened
-                if (otherDist < this.NEIGHBOR_DIST && other.state == THREATENED) {
-
-                    if (this.state != THREATENED && distance(other.threat.pos, this.pos) < this.THREAT_AGREE_DIST) {
-                        this.state = THREATENED;
-                        this.threat = other.threat;
-                    }
-                }
-
-                // calculate the force applied by the other
-                var forceArr = this.getForce(other);
-                var force = forceArr[0];
-                var absoluteDir = forceArr[1];
-                var absolute = forceArr[2];
-            
-                if (absolute) {
-                    // if the force is designated absolute then add this to the
-                    // absolutes list
-                    absolutes.push(scale(absoluteDir, -1));
-                }
-
-                // add the force
-                totalForce = addVectors(totalForce, force);
-
-            }
-        }
+    else if (this.checkHerdState(level)) {
+        // if the herd is threatened, become threatened.
+        // This statement makes sure that the next statement is not executed if
+        // we just got threatened
     }
 
     if (this.state == THREATENED) {
-        // if this sprite is threatened, then calculate the effect of that
-        // threat
-        
-        // if the threat is far away, forget about it
-        var dist = distance(this.pos, this.threat.pos);
-        if (dist > this.THREAT_FORGET_DIST) {
+        var threatCenterDist = distance(groupObj[1], this.threat.pos);
+        var threatDist = distance(this.pos, this.threat.pos);
+
+        if (threatCenterDist > this.THREAT_FORGET_DIST || (threatDist > this.THREAT_FORGET_DIST && threatDist < threatCenterDist)) {
             this.threat = null;
             this.state = RELAXED;
         }
-        else {
-            var forceArr = this.getForce(this.threat);
-            var force = forceArr[0];
-            var absoluteDir = forceArr[1];
-            var absolute = forceArr[2];
-        
-            // a sheep may never run toward a predator that is threatening them,
-            // so add to the absolutes list
-            absolutes.push(scale(absoluteDir, -1));
 
-            // add the force
-            totalForce = addVectors(totalForce, force);
-        }
     }
+
+    if (this.state == THREATENED) {
+        // if this sprite is still threatened, then calculate the effect of that
+        // threat
+        var forceArr = this.getThreatForce(this.threat, level);
+        var force = forceArr[0];
+        var absoluteDir = forceArr[1];
+        var absolute = forceArr[2];
+    
+        // a sheep may never run toward a predator that is threatening them,
+        // so add to the absolutes list
+        absolutes.push(scale(absoluteDir, -1));
+
+        // add the force
+        totalForce = addVectors(totalForce, force);
+    }
+
+    // be effected by sheep nearby (by definition they must be in your herd)
+    var sameResult = this.getSameForces(level);
+    var absolutes = sameResult[1];
+    totalForce = addVectors(totalForce, sameResult[0]);
+
+    // add the herd force
+    totalForce = addVectors(totalForce, this.getHerdForce(level));
 
     // update the acceleration
     var maxAccel = (this.threat != null) ? this.MAX_THREAT_ACCEL : this.MAX_ACCEL;
@@ -303,31 +364,73 @@ SheepSprite.prototype.evalDeriv = function(level) {
 }
 
 /*
- * Method: SheepSprite.getForce
- * See Sprite.getForce
+ * Method: getHerdForce
+ * Gets the force of the herd on the motion of this particle. Scales up with
+ * distance
  *
  * Member Of: SheepSprite
  */
-SheepSprite.prototype.getForce = function(other) {
-    var dist = distance(this.pos, other.pos);
-    var force = [0, 0];
-        var dir = normalized(subVectors(this.pos, other.pos));
-    if (other.type === "SheepSprite") {
-        if (this.state == THREATENED) {
-            force = this.getThreatenedSheepForce(other, dir);
-        }
-        else if (this.state == RELAXED){
-            force = this.getRelaxedSheepForce(other, dir);
-        }
+SheepSprite.prototype.getHerdForce = function(level) {
+    var center = level.sheepGroups[this.group][1];
+    var dir = subVectors(center, this.pos);
+    var dist = distance(this.pos, center);
+    return makeLen(dir, this.HERD_FORCE * dist);
+};
+
+/*
+ * Method: getThreatForce
+ * Returns the force applied on this by the threat.
+ *
+ * Parameters:
+ * threat - the object threatening the sheep
+ *
+ * Member Of: SheepSprite
+ */
+SheepSprite.prototype.getThreatForce = function(threat, level) {
+    // Pushed away  from group center
+    var groupObj = level.sheepGroups[this.group][1];
+    var dir = normalized(subVectors(this.pos, threat.pos));
+    var dist = distance(this.pos, threat.pos);
+    var groupDir = normalized(subVectors(groupObj, threat.pos));
+    var groupDist = distance(groupObj, threat.pos);
+    if (dist < 0.01) {
+        dist = 0.01;
     }
-    else if (other.type === "Player") {
-        // assume threatened if this is called
-        // Pushed away 
-        var dir = normalized(subVectors(this.pos, other.pos));
-        if (dist < 0.01) {
-            dist = 0.01;
+    var force = scale(dir, this.SOLO_THREAT_FORCE * Math.pow(2, (1/dist) ));
+    var groupForce = scale(groupDir, this.HERD_THREAT_FORCE * Math.pow(2, (1/groupDist) ));
+
+    // if the two objects are about to overlap, prevent that by returning true
+    // as the second return value
+    if (dist < this.RADIUS + threat.RADIUS) {
+        return [addVectors(force, groupForce), dir, true];
+    }
+    else {
+        return [addVectors(force, groupForce), dir, false];
+    }
+};
+
+/*
+ * Method: SheepSprite.getSheepForce
+ * See Sprite.getSheepForce
+ *
+ * Member Of: SheepSprite
+ */
+SheepSprite.prototype.getSheepForce = function(other) {
+    // repelled if close, no force if far away
+    var dist = distance(this.pos, other.pos);
+    var dir = normalized(subVectors(this.pos, other.pos));
+    var distRep = (2*this.RADIUS) + this.RELAXED_FORCE_DIST;
+    var distEff = dist - (2*this.RADIUS);
+    var scaleVal = (this.state == THREATENED) ? this.THREATENED_SAME_FORCE : this.RELAXED_SAME_FORCE;
+    var force = [0, 0];
+    if (dist < distRep) {
+        if (distEff < 0.01) {
+            distEff = 0.01;
         }
-        force = scale(dir, this.THREAT_FORCE * Math.pow(2, (1/dist) ));
+        force = scale(dir, scaleVal * Math.pow(2, 1/distEff));
+    }
+    else {
+        force = [0, 0];
     }
 
     // if the two objects are about to overlap, prevent that by returning true
@@ -339,66 +442,6 @@ SheepSprite.prototype.getForce = function(other) {
         return [force, dir, false]
     }
 };
-
-/*
- * Method: getThreatenedSheepForce
- * Gets the force applied on this by another sheep if this sheep is threatened
- *
- * Member Of: SheepSprite
- */
-SheepSprite.prototype.getThreatenedSheepForce = function(other, dir) {
-    // if there is a threat, and the other sheep is relaxed, avoid it (repelled)
-    // and if the other is threatened, run with it (force parallel to others
-    // velocity
-    var dist = distance(this.pos, other.pos);
-    if (other.state == THREATENED) {
-        return scale(other.vel, this.RUN_WITH_CONST);
-    }
-    else if (other.state == RELAXED) {
-        // want the direction orthogonal to our velocity
-        //var dir = orthogonal(this.vel);
-
-        var effDist = dist - 2*this.RADIUS;
-        if (effDist < 0.01) {
-            effDist = 0.01;
-        }
-        var crossMag = dot(dir, this.vel);
-        var mag = this.THREATENED_SAME_FORCE * crossMag * Math.pow( 2, 1/effDist);
-
-        return scale(dir, mag);
-    }
-};
-
-/*
- * Method: getRelaxedSheepForce
- * Gets the force applied to this by another sheep if this sheep is not
- * threatened
- *
- * Member Of: SheepSprite
- */
-SheepSprite.prototype.getRelaxedSheepForce = function(other, dir) {
-    // if no threat, repelled if close, 0 pressure if nearby, attracted
-    // gently if far
-    var dist = distance(this.pos, other.pos);
-    var distAttr = (2*this.RADIUS) + this.RELAXED_FORCE_DIST + this.RELAXED_FORCE_BUFF;
-    var distRep = (2*this.RADIUS) + this.RELAXED_FORCE_DIST;
-    if (other.state == THREATENED) {
-        return scale(other.vel, this.RUN_WITH_CONST);
-    }
-    else if (dist > distAttr) {
-        return scale(dir, -1 * this.SAME_ATTR_FORCE * (dist - distAttr));
-    }
-    else if (dist < distRep) {
-        if (dist < 0.01) {
-            dist = 0.01;
-        }
-        return scale(dir, this.RELAXED_SAME_FORCE * Math.pow(2, 1/dist));
-    }
-    else {
-        return [0, 0];
-    }
-};
-
 
 ///////////////////////////////////////////////////////////////////////////////
 /////////////////////////////// Player Object /////////////////////////////////

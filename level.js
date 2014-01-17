@@ -52,6 +52,8 @@ Level.prototype.logic = function(game) {
     }
     // find sheep groupings
     this.findSheepGroups(Object.keys(this.sheep), 0);
+    // calculate group centers
+    this.findGroupCenters();
     // calculate the derivative for each element
     for (var key in this.sheep) {
         if (this.sheep.hasOwnProperty(key)) {
@@ -59,6 +61,26 @@ Level.prototype.logic = function(game) {
         }
     }
     this.player.evalDeriv(this);
+};
+
+/*
+ * Method: findGroupCenters
+ * Finds the center of each sheep herd.
+ *
+ * Member Of: Level
+ */
+Level.prototype.findGroupCenters = function() {
+    for (var key in this.sheepGroups) {
+        if (this.sheepGroups.hasOwnProperty(key)) {
+            var group = this.sheepGroups[key];
+            var num = group.length;
+            var sum = [0, 0];
+            for (var i = 0; i < num; i++) {
+                sum = addVectors(sum, group[i].pos);
+            }
+            this.sheepGroups[key] = [group, scale(sum, 1/num)];
+        }
+    }
 };
 
 /*
@@ -121,15 +143,12 @@ Level.prototype.findSheepGroups = function(ungrouped, nextGroupNum) {
     }
     
     // recurse
-    //console.log("Ungrouped: ");
-    //console.log(ungrouped);
-    //console.log("Assigned: ");
-    //console.log(assigned);
     var remaining = arrayDiff(ungrouped, assigned);
     if (remaining.length > 0) {
-        //console.log("Remaining: ");
-        //console.log(remaining);
         this.findSheepGroups(remaining, nextGroupNum);
+    }
+    else {
+        return;
     }
 };
 
@@ -164,7 +183,5 @@ Level.prototype.giveSheepGroup = function(s, group) {
             results = results.concat(otherResults);
         }
     }
-    //console.log("Results:");
-    //console.log(results);
     return results;
 };
