@@ -46,7 +46,13 @@ Barriers.prototype.test = function(sprite) {
         if (numeric.det(vb) == 0) {
             break; // paths are parallel. Don't need to do anything
         }
-        var vbInv = numeric.inv(vb);
+
+        try {
+            var vbInv = numeric.inv(vb);
+        }
+        catch (ex) {
+            break;
+        }
         var ts = numeric.dot(pb, vbInv);
 
         // now we have two t values that should be the intersection point

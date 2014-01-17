@@ -87,27 +87,6 @@ Sprite.prototype.getForce = function(otherType) {
     return [0, false];
 };
 
-/*
- * Method: checkBoundaries
- * Checks to see if the current velocity will take the sprite out of bounds,
- * and, if so, changes the velocity so that it will not do so.
- *
- * TODO: change this to use a potential rather than a flat wall.
- *
- * Member Of: Sprite
- */
-Sprite.prototype.checkBoundaries = function() {
-    var nextPos = addVectors(this.pos, this.vel);
-    var velMag = len(this.vel);
-    if (nextPos[0] > window.game.width - this.RADIUS || nextPos[0] < this.RADIUS) {
-        this.vel[0] = 0;
-    }
-    if (nextPos[1] > window.game.height - this.RADIUS || nextPos[1] < this.RADIUS) {
-        this.vel[1] = 0;
-    }
-    makeLen(this.vel, velMag); // if you hit a boundary, keep moving fast
-};
-
 ///////////////////////////////////////////////////////////////////////////////
 /////////////////////////////// Player Object /////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -128,28 +107,28 @@ inherits(SheepSprite, Sprite);
 
 SheepSprite.prototype.RADIUS = 6;
 
-SheepSprite.prototype.VIEW_DIST = 100;
+SheepSprite.prototype.VIEW_DIST = 200;
 SheepSprite.prototype.SAME_VIEW_DIST = 80;
-SheepSprite.prototype.NEIGHBOR_DIST = 60; // distance at which another animal can be considered a neighbor
-SheepSprite.prototype.THREAT_FORGET_DIST = 200;
+SheepSprite.prototype.NEIGHBOR_DIST = 50; // distance at which another animal can be considered a neighbor
+SheepSprite.prototype.THREAT_FORGET_DIST = 250;
 
-SheepSprite.prototype.MAX_VEL = 1.5; // max velocity when relaxed
+SheepSprite.prototype.MAX_VEL = 1.0; // max velocity when relaxed
 SheepSprite.prototype.MAX_THREAT_VEL = 3; // max velocity when threatened
-SheepSprite.prototype.MAX_ACCEL = 0.03; // maximum acceleration when relaxed
-SheepSprite.prototype.MAX_THREAT_ACCEL = 0.08; // maximum acceleration when threatened
+SheepSprite.prototype.MAX_ACCEL = 0.05; // maximum acceleration when relaxed
+SheepSprite.prototype.MAX_THREAT_ACCEL = 0.1; // maximum acceleration when threatened
 
 SheepSprite.prototype.GROUP_THINK_PERCENT = 0.2;
-SheepSprite.prototype.HERD_FORCE = 0.1;
-SheepSprite.prototype.SAME_FORCE_DIST = 10; // distance at which attraction begins if unthreatened
+SheepSprite.prototype.HERD_FORCE = 2;
+SheepSprite.prototype.SAME_FORCE_DIST = 30; // distance at which repulsion stops between sheep
 
-SheepSprite.prototype.THREATENED_SAME_FORCE = 3; // scale force between sheep when threatened
-SheepSprite.prototype.HERD_THREAT_FORCE = 3; // scale for force of threat on herd center
-SheepSprite.prototype.SOLO_THREAT_FORCE = 3; // scale for force of threat on individual
+SheepSprite.prototype.THREATENED_SAME_FORCE = 2; // scale force between sheep when threatened
+SheepSprite.prototype.HERD_THREAT_FORCE = 1; // scale for force of threat on herd center
+SheepSprite.prototype.SOLO_THREAT_FORCE = 2; // scale for force of threat on individual
 
-SheepSprite.prototype.RELAXED_SAME_FORCE = 20; // scale for force to move away from neighbors
+SheepSprite.prototype.RELAXED_SAME_FORCE = 2; // scale for force to move away from neighbors
 
-SheepSprite.prototype.FORCE_SCALE = 0.02; // scales the force to create a velocity
-SheepSprite.prototype.DAMPING = 0.05;
+SheepSprite.prototype.FORCE_SCALE = 0.1; // scales the force to create a velocity
+SheepSprite.prototype.DAMPING = 0.1;
 
 /*
  * Method: getColor
@@ -241,30 +220,16 @@ SheepSprite.prototype.checkHerdState = function(level) {
 SheepSprite.prototype.getSameForces = function(level) {
     var groupObj = level.sheepGroups[this.group][0];
     var totalForce = [0, 0];
-    var absolutes = [];
     for (var i = 0; i < groupObj.length; i++) {
         var other = groupObj[i];
         var otherDist = distance(other.pos, this.pos);
 
         if (otherDist < this.SAME_VIEW_DIST) {
-
             // calculate the force applied by the other
-            var forceArr = this.getSheepForce(other);
-            var force = forceArr[0];
-            var absoluteDir = forceArr[1];
-            var absolute = forceArr[2];
-        
-            if (absolute) {
-                // if the force is designated absolute then add this to the
-                // absolutes list
-                absolutes.push(scale(absoluteDir, -1));
-            }
-
-            // add the force
-            totalForce = addVectors(totalForce, force);
+            totalForce = addVectors(totalForce, this.getSheepForce(other));
         }
     }
-    return [totalForce, absolutes];
+    return totalForce;
 };
 
 /*
@@ -283,7 +248,6 @@ SheepSprite.prototype.evalDeriv = function(level) {
     // certain distance of the other sheep
     
     var totalForce = [0, 0];
-    var absolutes = [];
     var groupObj = level.sheepGroups[this.group];
 
     if (distance(level.player.pos, this.pos) < this.VIEW_DIST) {
@@ -309,23 +273,11 @@ SheepSprite.prototype.evalDeriv = function(level) {
     if (this.state == THREATENED) {
         // if this sprite is still threatened, then calculate the effect of that
         // threat
-        var forceArr = this.getThreatForce(this.threat, level);
-        var force = forceArr[0];
-        var absoluteDir = forceArr[1];
-        var absolute = forceArr[2];
-    
-        // a sheep may never run toward a predator that is threatening them,
-        // so add to the absolutes list
-        absolutes.push(scale(absoluteDir, -1));
-
-        // add the force
-        totalForce = addVectors(totalForce, force);
+        totalForce = addVectors(totalForce, this.getThreatForce(this.threat, level));
     }
 
     // be effected by sheep nearby (by definition they must be in your herd)
-    var sameResult = this.getSameForces(level);
-    absolutes = absolutes.concat(sameResult[1]);
-    totalForce = addVectors(totalForce, sameResult[0]);
+    totalForce = addVectors(totalForce, this.getSameForces(level));
 
     // add the herd force
     totalForce = addVectors(totalForce, this.getHerdForce(level));
@@ -334,10 +286,10 @@ SheepSprite.prototype.evalDeriv = function(level) {
     var maxAccel = (this.threat != null) ? this.MAX_THREAT_ACCEL : this.MAX_ACCEL;
     this.accel = scale(bound(0, maxAccel, scale(totalForce, this.FORCE_SCALE)), MOVE_LOOP_TIME/DRAW_LOOP_TIME);
 
-    // remove any components of motion that are "absolute", ie, that cannot be
-    // allowed
-    for (var i = 0; i < absolutes.length; i++) {
-        var direction = absolutes[i];
+    // a sheep may never run toward a predator so remove that component of the
+    // velocity if threatened
+    if (this.state == THREATENED) {
+        var direction = normalized(subVectors(this.threat.pos, this.pos))
         var magnitude = dot(direction, this.vel) + VELOCITY_BUFFER;
         if (magnitude > 0) {
             var badComponent = scale(direction, magnitude);
@@ -366,7 +318,7 @@ SheepSprite.prototype.getHerdForce = function(level) {
     var center = level.sheepGroups[this.group][1];
     var dir = subVectors(center, this.pos);
     var dist = distance(this.pos, center);
-    return makeLen(dir, this.HERD_FORCE * dist);
+    return makeLen(dir, this.HERD_FORCE * Math.log(dist));
 };
 
 /*
@@ -391,14 +343,7 @@ SheepSprite.prototype.getThreatForce = function(threat, level) {
     var force = scale(dir, this.SOLO_THREAT_FORCE * Math.pow(2, (1/dist) ));
     var groupForce = scale(groupDir, this.HERD_THREAT_FORCE * Math.pow(2, (1/groupDist) ));
 
-    // if the two objects are about to overlap, prevent that by returning true
-    // as the second return value
-    if (dist < this.RADIUS + threat.RADIUS) {
-        return [addVectors(force, groupForce), dir, true];
-    }
-    else {
-        return [addVectors(force, groupForce), dir, false];
-    }
+    return addVectors(force, groupForce);
 };
 
 /*
@@ -419,19 +364,10 @@ SheepSprite.prototype.getSheepForce = function(other) {
         if (distEff < 0.01) {
             distEff = 0.01;
         }
-        force = scale(dir, scaleVal * Math.pow(2, 1/distEff));
+        return scale(dir, scaleVal * Math.pow(2, 1/distEff));
     }
     else {
-        force = [0, 0];
-    }
-
-    // if the two objects are about to overlap, prevent that by returning true
-    // as the second return value
-    if (dist < this.RADIUS + other.RADIUS) {
-        return [force, dir, true];
-    }
-    else {
-        return [force, dir, false]
+        return [0, 0];
     }
 };
 
@@ -469,9 +405,6 @@ Player.prototype.evalDeriv = function(level) {
     var diff = subVectors(this.mousePos, this.pos);
     this.vel = scale(bound(0, this.MAX_VEL, scale(diff, this.VEL_SCALE)), MOVE_LOOP_TIME/DRAW_LOOP_TIME);
     this.accel = [0, 0];
-
-    // check the velocity in case its hitting boundaries
-    //this.checkBoundaries();
 
     this.checkColissions(level);
 };

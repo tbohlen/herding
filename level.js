@@ -69,6 +69,54 @@ Level.prototype.resize = function() {
 };
 
 /*
+ * Method: checkCollisions
+ * Checks for collisions between sprites and corrects
+ *
+ * Member Of: Level
+ */
+Level.prototype.checkCollisions = function() {
+    var all = [];
+    for (var key in this.sheep) {
+        if (this.sheep.hasOwnProperty(key)) {
+            all.push(this.sheep[key]);
+        }
+    }
+    all.push(this.player);
+
+    // for each pair
+    for (var i = 0; i < all.length; i++) {
+        var first = all[i];
+        for (var j = i+1; j < all.length; j++) {
+            var second = all[j];
+            var dist = distance(first.pos, second.pos);
+            // make sure that the next step will take them closer together
+            var dotProd = dot(subVectors(first.vel, second.vel), subVectors(second.pos, first.pos));
+
+            if (dist < first.RADIUS + second.RADIUS && dotProd > 0) {
+                var dir = normalized(subVectors(second.pos, first.pos));
+
+                // make sure they do not overlap
+                var distCorrection = (dist-(first.RADIUS+second.RADIUS))/2;
+                first.pos = addVectors(first.pos, scale(dir, distCorrection-POSITION_BUFFER));
+                second.pos = addVectors(second.pos, scale(dir, -distCorrection+POSITION_BUFFER));
+
+                // the two particles are colliding. Find the components of the
+                // velocities perpendicular to the surface of collision
+                var vel1 = dot(dir, first.vel);
+                var vel2 = dot(dir, second.vel);
+                var velDiff = scale(dir, vel1 - vel2);
+                var vel1After = (ELASTICITY*(vel2-vel1) + vel2 + vel1)/2;
+                var vel2After = (ELASTICITY*(vel1-vel2) + vel2 + vel1)/2;
+                
+                // modify the velocities
+                first.vel = addVectors(first.vel, scale(dir, vel1After - vel1 + VELOCITY_BUFFER));
+                second.vel = addVectors(second.vel, scale(dir, vel2After - vel2 + VELOCITY_BUFFER));
+            }
+        }
+    }
+};
+
+/*
  * Method: draw
  * Draws the level to screen
  *
@@ -119,6 +167,8 @@ Level.prototype.logic = function(game) {
     }
     this.player.evalDeriv(this);
     this.barriers.test(this.player);
+
+    this.checkCollisions();
 };
 
 /*
@@ -195,7 +245,6 @@ Level.prototype.findSheepGroups = function(ungrouped, nextGroupNum) {
         // if none of its neighbors have groups, make a new group
         this.sheepGroups[nextGroupNum] = [];
         assigned = assigned.concat(this.giveSheepGroup(s, nextGroupNum));
-        //assigned = assigned.concat(["1", "2", "3"]);
         nextGroupNum++;
     }
     else {
