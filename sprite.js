@@ -318,7 +318,10 @@ SheepSprite.prototype.getHerdForce = function(level) {
     var center = level.sheepGroups[this.group][1];
     var dir = subVectors(center, this.pos);
     var dist = distance(this.pos, center);
-    return makeLen(dir, this.HERD_FORCE * Math.log(dist));
+    if (dist > 1) {
+        dist = Math.log(dist);
+    }
+    return makeLen(dir, this.HERD_FORCE * dist);
 };
 
 /*

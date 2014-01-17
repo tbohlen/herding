@@ -48,6 +48,7 @@ Barriers.prototype.test = function(sprite) {
         }
 
         try {
+            // this was throwing lots of errors...
             var vbInv = numeric.inv(vb);
         }
         catch (ex) {
